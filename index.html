@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Ventas - Mango con Crema</title>
+    <!-- Google Fonts & Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #fffbeb; }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-amber-600 text-white shadow-md py-4 px-6 flex justify-between items-center">
+        <h1 class="text-xl font-bold">🥭 Control de Ventas - Mango con Crema</h1>
+        <nav class="space-x-4">
+            <button onclick="switchTab('ventas')" id="btn-ventas" class="font-semibold underline">Registrar Venta</button>
+            <button onclick="switchTab('historial')" id="btn-historial" class="text-amber-100 hover:underline">Historial y Gestión</button>
+            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="text-amber-100 hover:underline">Dashboard</button>
+        </nav>
+    </header>
+
+    <main class="max-w-4xl mx-auto p-6 mt-4">
+
+        <!-- SECCIÓN 1: REGISTRAR VENTA -->
+        <section id="tab-ventas" class="bg-white p-6 rounded-2xl shadow-lg border border-amber-200">
+            <h2 class="text-2xl font-bold text-amber-700 mb-4">Nueva Venta</h2>
+            <form id="salesForm" onsubmit="handleSale(event)" class="space-y-4">
+                <div>
+                    <label class="block font-semibold mb-1">Nombre de la Persona:</label>
+                    <input type="text" id="nombrePersona" required class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" placeholder="Ej. Maria Perez">
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1">Producto:</label>
+                    <input type="text" id="producto" readonly value="Mango Con Crema de 267 ml" class="w-full bg-gray-100 border border-gray-300 p-2 rounded-lg text-gray-600">
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1">Cantidad:</label>
+                    <input type="number" id="cantidad" min="1" value="1" required oninput="calcularTotal()" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1">Método de Pago:</label>
+                    <select id="metodoPago" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none">
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Consignación">Consignación</option>
+                    </select>
+                </div>
+
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 flex justify-between items-center">
+                    <span class="text-lg font-semibold text-amber-900">Valor Total:</span>
+                    <span id="valorTotal" class="text-2xl font-bold text-amber-600">$12.000</span>
+                </div>
+
+                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold p-3 rounded-xl transition shadow-md">
+                    Registrar y Pagar
+                </button>
+            </form>
+        </section>
+
+        <!-- SECCIÓN 2: HISTORIAL Y GESTIÓN -->
+        <section id="tab-historial" class="hidden bg-white p-6 rounded-2xl shadow-lg border border-amber-200">
+            <h2 class="text-2xl font-bold text-amber-700 mb-4">Historial de Ventas y Gestión</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-amber-100 text-amber-900 border-b border-amber-200">
+                            <th class="p-3">Fecha</th>
+                            <th class="p-3">Cliente</th>
+                            <th class="p-3">Cantidad</th>
+                            <th class="p-3">Total</th>
+                            <th class="p-3">Pago</th>
+                            <th class="p-3 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesTableBody">
+                        <!-- Dinámico -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: DASHBOARD -->
+        <section id="tab-dashboard" class="hidden space-y-6">
+            <h2 class="text-2xl font-bold text-amber-700">Dashboard de Ventas</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white p-6 rounded-2xl shadow border border-amber-200 text-center">
+                    <h3 class="text-gray-500 font-semibold">Total Vendido (Pesos)</h3>
+                    <p id="dashTotalPesos" class="text-3xl font-bold text-amber-600 mt-2">$0</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow border border-amber-200 text-center">
+                    <h3 class="text-gray-500 font-semibold">Cantidad Total Unidades</h3>
+                    <p id="dashTotalUnidades" class="text-3xl font-bold text-amber-600 mt-2">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow border border-amber-200 text-center">
+                    <h3 class="text-gray-500 font-semibold">Total Transacciones</h3>
+                    <p id="dashTotalTransacciones" class="text-3xl font-bold text-amber-600 mt-2">0</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow border border-amber-200">
+                    <h3 class="font-bold text-lg text-amber-800 mb-3">Ventas por Mes</h3>
+                    <div id="dashPorMes" class="space-y-2 text-sm"></div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow border border-amber-200">
+                    <h3 class="font-bold text-lg text-amber-800 mb-3">Ventas por Día</h3>
+                    <div id="dashPorDia" class="space-y-2 text-sm max-h-60 overflow-y-auto"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal de Edición -->
+    <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-md shadow-xl">
+            <h3 class="text-xl font-bold text-amber-700 mb-4">Modificar Venta</h3>
+            <input type="hidden" id="editIndex">
+            <div class="space-y-3">
+                <div>
+                    <label class="block font-semibold text-sm">Nombre Persona:</label>
+                    <input type="text" id="editNombre" class="w-full border p-2 rounded-lg">
+                </div>
+                <div>
+                    <label class="block font-semibold text-sm">Cantidad:</label>
+                    <input type="number" id="editCantidad" min="1" class="w-full border p-2 rounded-lg">
+                </div>
+                <div>
+                    <label class="block font-semibold text-sm">Método de Pago:</label>
+                    <select id="editMetodo" class="w-full border p-2 rounded-lg">
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Consignación">Consignación</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 mt-4">
+                <button onclick="closeEditModal()" class="px-4 py-2 bg-gray-300 rounded-lg">Cancelar</button>
+                <button onclick="saveEdit()" class="px-4 py-2 bg-amber-600 text-white rounded-lg font-bold">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const PRECIO_UNITARIO = 12000;
+        const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz4ytVJLpF3kgZYTTof9XjesK9dQc-w6vmDeb8dGjtc8KGfIddkQf1P6mKnjDMmEDU/exec"; 
+
+        let ventas = JSON.parse(localStorage.getItem('ventas_mango')) || [];
+
+        function calcularTotal() {
+            const cantidad = document.getElementById('cantidad').value || 0;
+            const total = cantidad * PRECIO_UNITARIO;
+            document.getElementById('valorTotal').innerText = `$${total.toLocaleString('es-CO')}`;
+        }
+
+        function switchTab(tab) {
+            ['ventas', 'historial', 'dashboard'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`btn-${t}`).className = "text-amber-100 hover:underline";
+            });
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`btn-${tab}`).className = "font-semibold underline";
+
+            if(tab === 'historial') renderHistorial();
+            if(tab === 'dashboard') renderDashboard();
+        }
+
+        function handleSale(e) {
+            e.preventDefault();
+            const nombre = document.getElementById('nombrePersona').value;
+            const cantidad = parseInt(document.getElementById('cantidad').value);
+            const metodo = document.getElementById('metodoPago').value;
+            const total = cantidad * PRECIO_UNITARIO;
+            const fecha = new Date().toISOString();
+
+            const nuevaVenta = {
+                id: Date.now(),
+                fecha,
+                nombre,
+                producto: "Mango Con Crema 267 ml",
+                cantidad,
+                total,
+                metodo
+            };
+
+            ventas.push(nuevaVenta);
+            localStorage.setItem('ventas_mango', JSON.stringify(ventas));
+            
+            enviarAGoogleSheet(nuevaVenta);
+
+            alert('¡Venta registrada y pagada con éxito!');
+            document.getElementById('salesForm').reset();
+            calcularTotal();
+        }
+
+        function renderHistorial() {
+            const tbody = document.getElementById('salesTableBody');
+            tbody.innerHTML = '';
+            if (ventas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500">No hay ventas registradas aún.</td></tr>`;
+                return;
+            }
+
+            ventas.forEach((v, index) => {
+                const fechaLegible = new Date(v.fecha).toLocaleString();
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-100 hover:bg-amber-50">
+                        <td class="p-3 text-sm">${fechaLegible}</td>
+                        <td class="p-3">${v.nombre}</td>
+                        <td class="p-3">${v.cantidad}</td>
+                        <td class="p-3 font-semibold text-amber-700">$${v.total.toLocaleString('es-CO')}</td>
+                        <td class="p-3 text-sm">${v.metodo}</td>
+                        <td class="p-3 text-center space-x-2">
+                            <button onclick="openEditModal(${index})" class="text-blue-600 hover:underline text-sm font-semibold">Editar</button>
+                            <button onclick="deleteSale(${index})" class="text-red-600 hover:underline text-sm font-semibold">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function deleteSale(index) {
+            if(confirm('¿Estás seguro de eliminar esta venta?')) {
+                ventas.splice(index, 1);
+                localStorage.setItem('ventas_mango', JSON.stringify(ventas));
+                renderHistorial();
+            }
+        }
+
+        function openEditModal(index) {
+            document.getElementById('editIndex').value = index;
+            document.getElementById('editNombre').value = ventas[index].nombre;
+            document.getElementById('editCantidad').value = ventas[index].cantidad;
+            document.getElementById('editMetodo').value = ventas[index].metodo;
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        function saveEdit() {
+            const index = document.getElementById('editIndex').value;
+            ventas[index].nombre = document.getElementById('editNombre').value;
+            ventas[index].cantidad = parseInt(document.getElementById('editCantidad').value);
+            ventas[index].total = ventas[index].cantidad * PRECIO_UNITARIO;
+            ventas[index].metodo = document.getElementById('editMetodo').value;
+
+            localStorage.setItem('ventas_mango', JSON.stringify(ventas));
+            closeEditModal();
+            renderHistorial();
+        }
+
+        function renderDashboard() {
+            let totalPesos = 0;
+            let totalUnidades = 0;
+            let porMes = {};
+            let porDia = {};
+
+            ventas.forEach(v => {
+                totalPesos += v.total;
+                totalUnidades += v.cantidad;
+
+                const fechaObj = new Date(v.fecha);
+                const mesKey = fechaObj.toLocaleString('es-CO', { month: 'long', year: 'numeric' });
+                const diaKey = fechaObj.toISOString().split('T')[0];
+
+                porMes[mesKey] = (porMes[mesKey] || { cant: 0, total: 0 });
+                porMes[mesKey].cant += v.cantidad;
+                porMes[mesKey].total += v.total;
+
+                porDia[diaKey] = (porDia[diaKey] || { cant: 0, total: 0 });
+                porDia[diaKey].cant += v.cantidad;
+                porDia[diaKey].total += v.total;
+            });
+
+            document.getElementById('dashTotalPesos').innerText = `$${totalPesos.toLocaleString('es-CO')}`;
+            document.getElementById('dashTotalUnidades').innerText = totalUnidades;
+            document.getElementById('dashTotalTransacciones').innerText = ventas.length;
+
+            const divMes = document.getElementById('dashPorMes');
+            divMes.innerHTML = Object.keys(porMes).length ? '' : '<p class="text-gray-500">Sin datos</p>';
+            for (let [mes, data] of Object.entries(porMes)) {
+                divMes.innerHTML += `<div class="flex justify-between bg-amber-50 p-2 rounded-lg"><span class="capitalize font-medium">${mes}</span><span class="font-bold text-amber-700">${data.cant} unidades ($${data.total.toLocaleString('es-CO')})</span></div>`;
+            }
+
+            const divDia = document.getElementById('dashPorDia');
+            divDia.innerHTML = Object.keys(porDia).length ? '' : '<p class="text-gray-500">Sin datos</p>';
+            for (let [dia, data] of Object.entries(porDia)) {
+                divDia.innerHTML += `<div class="flex justify-between bg-amber-50 p-2 rounded-lg"><span>${dia}</span><span class="font-bold text-amber-700">${data.cant} unds ($${data.total.toLocaleString('es-CO')})</span></div>`;
+            }
+        }
+
+        async function enviarAGoogleSheet(venta) {
+            if (WEBHOOK_URL.includes("TU_WEBHOOK")) return; 
+            try {
+                await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(venta)
+                });
+            } catch (err) {
+                console.error('Error al sincronizar con Google Sheet:', err);
+            }
+        }
+    </script>
+</body>
+</html>
