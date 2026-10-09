@@ -1,0 +1,109 @@
+function doPost(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    
+    if (!e || !e.postData || !e.postData.contents) {
+      return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": "No data received"}))
+                  .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var data = JSON.parse(e.postData.contents);
+    var action = data.action || "create";
+    var rows = sheet.getDataRange().getValues();
+    
+    if (action === "create") {
+      sheet.appendRow([
+        data.id || Date.now(),
+        data.fecha || new Date().toISOString(),
+        data.nombre || "",
+        data.producto || "",
+        data.cantidad || 0,
+        data.total || 0,
+        data.metodo || ""
+      ]);
+    } 
+    else if (action === "update") {
+      // Buscar la fila que coincida con el ID o por similitud de datos
+      var rowIndex = -1;
+      for (var i = 1; i < rows.length; i++) {
+        // Comparamos el ID (Columna A / índice 0)
+        if (String(rows[i][0]) === String(data.id)) {
+          rowIndex = i + 1;
+          break;
+        }
+      }
+      
+      // Si no encontró por ID exacto, busca por nombre y fecha aproximada
+      if (rowIndex === -1) {
+        for (var i = 1; i < rows.length; i++) {
+          if (String(rows[i][2]).trim().toLowerCase() === String(data.nombre).trim().toLowerCase()) {
+            rowIndex = i + 1;
+            break;
+          }
+        }
+      }
+      
+      if (rowIndex !== -1) {
+        sheet.getRange(rowIndex, 1, 1, 7).setValues([[
+          data.id || rows[rowIndex-1][0],
+          data.fecha || rows[rowIndex-1][1],
+          data.nombre || "",
+          data.producto || "Mango Con Crema 267 ml",
+          data.cantidad || 0,
+          data.total || 0,
+          data.metodo || ""
+        ]]);
+      }
+    } 
+    else if (action === "delete") {
+      var rowIndex = -1;
+      for (var i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) === String(data.id)) {
+          rowIndex = i + 1;
+          break;
+        }
+      }
+      
+      if (rowIndex !== -1) {
+        sheet.deleteRow(rowIndex);
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({"status": "success"}))
+                .setMimeType(ContentService.MimeType.JSON);
+                
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": error.toString()}))
+                .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var rows = sheet.getDataRange().getValues();
+    
+    var ventas = [];
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      if (row[2] || row[1]) { // Validar que tenga al menos nombre o fecha
+        ventas.push({
+          id: row[0] || (i + "_" + Date.now()),
+          fecha: row[1],
+          nombre: row[2],
+          producto: row[3],
+          cantidad: row[4],
+          total: row[5],
+          metodo: row[6]
+        });
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ "status": "success", "ventas": ventas }))
+                .setMimeType(ContentService.MimeType.JSON);
+                
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
+                .setMimeType(ContentService.MimeType.JSON);
+  }
+}

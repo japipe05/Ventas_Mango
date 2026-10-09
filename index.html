@@ -28,44 +28,26 @@
         <!-- SECCIÓN 1: REGISTRAR VENTA -->
         <section id="tab-ventas" class="bg-white p-6 rounded-2xl shadow-lg border border-amber-200">
             <h2 class="text-2xl font-bold text-amber-700 mb-4">Nueva Venta</h2>
-            <form id="salesForm" onsubmit="handleSale(event)" class="space-y-4">
-                <div>
-                    <label class="block font-semibold mb-1">Nombre de la Persona:</label>
-                    <input type="text" id="nombrePersona" required class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" placeholder="Ej. Maria Perez">
-                </div>
+            
+            <!-- Contenedor dinámico de clientes -->
+            <div id="clientesContainer" class="space-y-6">
+                <!-- Las tarjetas de clientes se inyectan aquí -->
+            </div>
 
-                <div>
-                    <label class="block font-semibold mb-1">Producto:</label>
-                    <input type="text" id="producto" readonly value="Mango Con Crema de 267 ml" class="w-full bg-gray-100 border border-gray-300 p-2 rounded-lg text-gray-600">
-                </div>
-
-                <div>
-                    <label class="block font-semibold mb-1">Cantidad:</label>
-                    <input type="number" id="cantidad" min="1" value="1" required oninput="calcularTotal()" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none">
-                </div>
-
-                <div>
-                    <label class="block font-semibold mb-1">Método de Pago:</label>
-                    <select id="metodoPago" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none">
-                        <option value="Efectivo">Efectivo</option>
-                        <option value="Consignación">Consignación</option>
-                    </select>
-                </div>
-
-                <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 flex justify-between items-center">
-                    <span class="text-lg font-semibold text-amber-900">Valor Total:</span>
-                    <span id="valorTotal" class="text-2xl font-bold text-amber-600">$12.000</span>
-                </div>
-
-                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold p-3 rounded-xl transition shadow-md">
-                    Registrar y Pagar
+            <!-- Botón Global para agregar más tarjetas -->
+            <div class="mt-6">
+                <button type="button" onclick="agregarClienteCard()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-3 rounded-xl transition shadow-md flex justify-center items-center gap-2">
+                    ➕ Agregar otro cliente
                 </button>
-            </form>
+            </div>
         </section>
 
         <!-- SECCIÓN 2: HISTORIAL Y GESTIÓN -->
         <section id="tab-historial" class="hidden bg-white p-6 rounded-2xl shadow-lg border border-amber-200">
-            <h2 class="text-2xl font-bold text-amber-700 mb-4">Historial de Ventas y Gestión</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-amber-700">Historial de Ventas y Gestión</h2>
+                <button onclick="forzarSincronizacion()" class="text-xs bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg font-semibold hover:bg-amber-200 transition">🔄 Sincronizar con la nube</button>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -149,14 +131,37 @@
 
     <script>
         const PRECIO_UNITARIO = 12000;
-        const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbz4ytVJLpF3kgZYTTof9XjesK9dQc-w6vmDeb8dGjtc8KGfIddkQf1P6mKnjDMmEDU/exec"; 
+        const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwtwIvjIoO1GbiLkvITk7ggBv1TJtG9YyUl32inuVkoX0zvwUTJoHePHH3dk7aDYyMp/exec"; 
 
         let ventas = JSON.parse(localStorage.getItem('ventas_mango')) || [];
+        let clienteContador = 0;
 
-        function calcularTotal() {
-            const cantidad = document.getElementById('cantidad').value || 0;
-            const total = cantidad * PRECIO_UNITARIO;
-            document.getElementById('valorTotal').innerText = `$${total.toLocaleString('es-CO')}`;
+        window.onload = function() {
+            agregarClienteCard();
+            // Carga inicial en segundo plano sin bloquear el renderizado
+            sincronizarHistorialRemotoSilencioso();
+        };
+
+        // Descarga datos de la nube en segundo plano al iniciar
+        async function sincronizarHistorialRemotoSilencioso() {
+            if (WEBHOOK_URL.includes("TU_WEBHOOK")) return;
+            try {
+                const response = await fetch(WEBHOOK_URL);
+                const data = await response.json();
+                if (data.status === "success" && data.ventas && data.ventas.length > 0) {
+                    ventas = data.ventas;
+                    localStorage.setItem('ventas_mango', JSON.stringify(ventas));
+                }
+            } catch (err) {
+                console.error('Modo offline / Error de red:', err);
+            }
+        }
+
+        async function forzarSincronizacion() {
+            alert("Sincronizando con la nube...");
+            await sincronizarHistorialRemotoSilencioso();
+            renderHistorial();
+            alert("¡Sincronizado correctamente!");
         }
 
         function switchTab(tab) {
@@ -167,20 +172,114 @@
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
             document.getElementById(`btn-${tab}`).className = "font-semibold underline";
 
-            if(tab === 'historial') renderHistorial();
-            if(tab === 'dashboard') renderDashboard();
+            // Renderizado instantáneo basado en memoria local (0 retraso)
+            if (tab === 'historial') renderHistorial();
+            if (tab === 'dashboard') renderDashboard();
         }
 
-        function handleSale(e) {
-            e.preventDefault();
-            const nombre = document.getElementById('nombrePersona').value;
-            const cantidad = parseInt(document.getElementById('cantidad').value);
-            const metodo = document.getElementById('metodoPago').value;
+        function agregarClienteCard() {
+            clienteContador++;
+            const id = clienteContador;
+            const container = document.getElementById('clientesContainer');
+
+            const cardHtml = `
+                <div id="cliente-card-${id}" class="border border-amber-300 p-4 rounded-xl bg-amber-50/50 shadow-sm space-y-3">
+                    <div class="flex justify-between items-center bg-amber-100 p-2 rounded-lg">
+                        <span id="titulo-cliente-${id}" class="font-bold text-amber-900">Cliente #${id}</span>
+                        <div class="space-x-2">
+                            <button type="button" onclick="toggleMinimizar(${id})" id="btn-min-${id}" class="text-xs bg-amber-600 text-white px-2 py-1 rounded font-semibold hover:bg-amber-700">Minimizar</button>
+                            ${id > 1 ? `<button type="button" onclick="eliminarClienteCard(${id})" class="text-xs bg-red-600 text-white px-2 py-1 rounded font-semibold hover:bg-red-700">Eliminar</button>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div id="contenido-cliente-${id}" class="space-y-3">
+                        <div>
+                            <label class="block font-semibold mb-1 text-sm">Nombre de la Persona:</label>
+                            <input type="text" id="nombre-${id}" required oninput="actualizarTitulo(${id})" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white" placeholder="Ej. Maria Perez">
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold mb-1 text-sm">Producto:</label>
+                            <input type="text" readonly value="Mango Con Crema de 267 ml" class="w-full bg-gray-100 border border-gray-300 p-2 rounded-lg text-gray-600 text-sm">
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold mb-1 text-sm">Cantidad:</label>
+                            <input type="number" id="cantidad-${id}" min="1" value="1" required oninput="calcularTotalCard(${id})" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold mb-1 text-sm">Método de Pago:</label>
+                            <select id="metodo-${id}" class="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Consignación">Consignación</option>
+                            </select>
+                        </div>
+
+                        <div class="bg-white p-3 rounded-lg border border-amber-200 flex justify-between items-center">
+                            <span class="text-sm font-semibold text-amber-900">Valor Total:</span>
+                            <span id="total-${id}" class="text-xl font-bold text-amber-600">$12.000</span>
+                        </div>
+
+                        <button type="button" id="btn-pagar-${id}" onclick="pagarCliente(${id})" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold p-2.5 rounded-xl transition shadow-md text-sm">
+                            Registrar y Pagar
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', cardHtml);
+        }
+
+        function calcularTotalCard(id) {
+            const cant = document.getElementById(`cantidad-${id}`).value || 0;
+            const total = cant * PRECIO_UNITARIO;
+            document.getElementById(`total-${id}`).innerText = `$${total.toLocaleString('es-CO')}`;
+        }
+
+        function actualizarTitulo(id) {
+            const nombre = document.getElementById(`nombre-${id}`).value;
+            const titulo = document.getElementById(`titulo-cliente-${id}`);
+            titulo.innerText = nombre ? `Cliente: ${nombre}` : `Cliente #${id}`;
+        }
+
+        function toggleMinimizar(id) {
+            const contenido = document.getElementById(`contenido-cliente-${id}`);
+            const btn = document.getElementById(`btn-min-${id}`);
+            if (contenido.classList.contains('hidden')) {
+                contenido.classList.remove('hidden');
+                btn.innerText = "Minimizar";
+            } else {
+                contenido.classList.add('hidden');
+                btn.innerText = "Maximizar";
+            }
+        }
+
+        function eliminarClienteCard(id) {
+            const card = document.getElementById(`cliente-card-${id}`);
+            if (card) card.remove();
+        }
+
+        function pagarCliente(id) {
+            const nombreInput = document.getElementById(`nombre-${id}`);
+            const cantidadInput = document.getElementById(`cantidad-${id}`);
+            const metodoInput = document.getElementById(`metodo-${id}`);
+            const btnPagar = document.getElementById(`btn-pagar-${id}`);
+
+            if (!nombreInput.value.trim()) {
+                alert('Por favor ingrese el nombre de la persona.');
+                nombreInput.focus();
+                return;
+            }
+
+            const nombre = nombreInput.value;
+            const cantidad = parseInt(cantidadInput.value);
+            const metodo = metodoInput.value;
             const total = cantidad * PRECIO_UNITARIO;
             const fecha = new Date().toISOString();
 
             const nuevaVenta = {
-                id: Date.now(),
+                action: "create",
+                id: Date.now() + Math.random(),
                 fecha,
                 nombre,
                 producto: "Mango Con Crema 267 ml",
@@ -189,14 +288,20 @@
                 metodo
             };
 
+            // 1. Guardado inmediato local (Velocidad instantánea 0ms)
             ventas.push(nuevaVenta);
             localStorage.setItem('ventas_mango', JSON.stringify(ventas));
-            
-            enviarAGoogleSheet(nuevaVenta);
 
-            alert('¡Venta registrada y pagada con éxito!');
-            document.getElementById('salesForm').reset();
-            calcularTotal();
+            // 2. Limpieza de interfaz inmediata
+            const card = document.getElementById(`cliente-card-${id}`);
+            if (card) card.remove();
+
+            if (document.querySelectorAll('[id^="cliente-card-"]').length === 0) {
+                agregarClienteCard();
+            }
+
+            // 3. Envío asíncrono a Google Sheets en segundo plano (No bloquea la pantalla)
+            enviarAGoogleSheet(nuevaVenta);
         }
 
         function renderHistorial() {
@@ -207,14 +312,16 @@
                 return;
             }
 
-            ventas.forEach((v, index) => {
+            // Renderizado inverso (lo más reciente arriba)
+            [...ventas].reverse().forEach((v, originalIndex) => {
+                const index = ventas.length - 1 - originalIndex;
                 const fechaLegible = new Date(v.fecha).toLocaleString();
                 tbody.innerHTML += `
                     <tr class="border-b border-gray-100 hover:bg-amber-50">
                         <td class="p-3 text-sm">${fechaLegible}</td>
                         <td class="p-3">${v.nombre}</td>
                         <td class="p-3">${v.cantidad}</td>
-                        <td class="p-3 font-semibold text-amber-700">$${v.total.toLocaleString('es-CO')}</td>
+                        <td class="p-3 font-semibold text-amber-700">$${Number(v.total).toLocaleString('es-CO')}</td>
                         <td class="p-3 text-sm">${v.metodo}</td>
                         <td class="p-3 text-center space-x-2">
                             <button onclick="openEditModal(${index})" class="text-blue-600 hover:underline text-sm font-semibold">Editar</button>
@@ -227,9 +334,16 @@
 
         function deleteSale(index) {
             if(confirm('¿Estás seguro de eliminar esta venta?')) {
+                const ventaEliminada = ventas[index];
                 ventas.splice(index, 1);
                 localStorage.setItem('ventas_mango', JSON.stringify(ventas));
                 renderHistorial();
+
+                // Sincronización en segundo plano
+                enviarAGoogleSheet({
+                    action: "delete",
+                    id: ventaEliminada.id
+                });
             }
         }
 
@@ -251,10 +365,14 @@
             ventas[index].cantidad = parseInt(document.getElementById('editCantidad').value);
             ventas[index].total = ventas[index].cantidad * PRECIO_UNITARIO;
             ventas[index].metodo = document.getElementById('editMetodo').value;
+            ventas[index].action = "update";
 
             localStorage.setItem('ventas_mango', JSON.stringify(ventas));
             closeEditModal();
             renderHistorial();
+
+            // Sincronización en segundo plano
+            enviarAGoogleSheet(ventas[index]);
         }
 
         function renderDashboard() {
@@ -264,20 +382,23 @@
             let porDia = {};
 
             ventas.forEach(v => {
-                totalPesos += v.total;
-                totalUnidades += v.cantidad;
+                const montoTotal = Number(v.total) || 0;
+                const cantUnidades = Number(v.cantidad) || 0;
+                
+                totalPesos += montoTotal;
+                totalUnidades += cantUnidades;
 
                 const fechaObj = new Date(v.fecha);
-                const mesKey = fechaObj.toLocaleString('es-CO', { month: 'long', year: 'numeric' });
-                const diaKey = fechaObj.toISOString().split('T')[0];
+                const mesKey = isNaN(fechaObj) ? "Fecha inválida" : fechaObj.toLocaleString('es-CO', { month: 'long', year: 'numeric' });
+                const diaKey = isNaN(fechaObj) ? v.fecha : fechaObj.toISOString().split('T')[0];
 
                 porMes[mesKey] = (porMes[mesKey] || { cant: 0, total: 0 });
-                porMes[mesKey].cant += v.cantidad;
-                porMes[mesKey].total += v.total;
+                porMes[mesKey].cant += cantUnidades;
+                porMes[mesKey].total += montoTotal;
 
                 porDia[diaKey] = (porDia[diaKey] || { cant: 0, total: 0 });
-                porDia[diaKey].cant += v.cantidad;
-                porDia[diaKey].total += v.total;
+                porDia[diaKey].cant += cantUnidades;
+                porDia[diaKey].total += montoTotal;
             });
 
             document.getElementById('dashTotalPesos').innerText = `$${totalPesos.toLocaleString('es-CO')}`;
@@ -297,18 +418,17 @@
             }
         }
 
-        async function enviarAGoogleSheet(venta) {
+        // Envío asíncrono puro (Non-blocking)
+        function enviarAGoogleSheet(payload) {
             if (WEBHOOK_URL.includes("TU_WEBHOOK")) return; 
-            try {
-                await fetch(WEBHOOK_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(venta)
-                });
-            } catch (err) {
-                console.error('Error al sincronizar con Google Sheet:', err);
-            }
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(err => {
+                console.error('Error de sincronización con Google Sheet en segundo plano:', err);
+            });
         }
     </script>
 </body>
