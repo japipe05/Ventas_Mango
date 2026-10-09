@@ -131,20 +131,20 @@
 
     <script>
         const PRECIO_UNITARIO = 12000;
-        //const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwtwIvjIoO1GbiLkvITk7ggBv1TJtG9YyUl32inuVkoX0zvwUTJoHePHH3dk7aDYyMp/exec"; 
-        const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxaYwKVWFjOTSONlCASA42jNWmQvQIVm_OXHvlc_Btdjc0IILY9_cCSTlb0QkSpNdfr/exec"; 
+        const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbw9umAmT_RHHrbbO67wxW9niDUyhpgA4TjZsjmwuzqBgix9CbtjT_lF-m6w5cg1-Ndh/exec"; 
         
+        // Detección automática del entorno (Desarrollo vs Producción)
+        // Valor quemado directamente en el código
+        const ENVIRONMENT = "Produccion";
 
         let ventas = JSON.parse(localStorage.getItem('ventas_mango')) || [];
         let clienteContador = 0;
 
         window.onload = function() {
             agregarClienteCard();
-            // Carga inicial en segundo plano sin bloquear el renderizado
             sincronizarHistorialRemotoSilencioso();
         };
 
-        // Descarga datos de la nube en segundo plano al iniciar
         async function sincronizarHistorialRemotoSilencioso() {
             if (WEBHOOK_URL.includes("TU_WEBHOOK")) return;
             try {
@@ -174,7 +174,6 @@
             document.getElementById(`tab-${tab}`).classList.remove('hidden');
             document.getElementById(`btn-${tab}`).className = "font-semibold underline";
 
-            // Renderizado instantáneo basado en memoria local (0 retraso)
             if (tab === 'historial') renderHistorial();
             if (tab === 'dashboard') renderDashboard();
         }
@@ -265,7 +264,6 @@
             const nombreInput = document.getElementById(`nombre-${id}`);
             const cantidadInput = document.getElementById(`cantidad-${id}`);
             const metodoInput = document.getElementById(`metodo-${id}`);
-            const btnPagar = document.getElementById(`btn-pagar-${id}`);
 
             if (!nombreInput.value.trim()) {
                 alert('Por favor ingrese el nombre de la persona.');
@@ -287,14 +285,13 @@
                 producto: "Mango Con Crema 267 ml",
                 cantidad,
                 total,
-                metodo
+                metodo,
+                environment: ENVIRONMENT // Se envía de forma oculta al backend
             };
 
-            // 1. Guardado inmediato local (Velocidad instantánea 0ms)
             ventas.push(nuevaVenta);
             localStorage.setItem('ventas_mango', JSON.stringify(ventas));
 
-            // 2. Limpieza de interfaz inmediata
             const card = document.getElementById(`cliente-card-${id}`);
             if (card) card.remove();
 
@@ -302,7 +299,6 @@
                 agregarClienteCard();
             }
 
-            // 3. Envío asíncrono a Google Sheets en segundo plano (No bloquea la pantalla)
             enviarAGoogleSheet(nuevaVenta);
         }
 
@@ -314,7 +310,6 @@
                 return;
             }
 
-            // Renderizado inverso (lo más reciente arriba)
             [...ventas].reverse().forEach((v, originalIndex) => {
                 const index = ventas.length - 1 - originalIndex;
                 const fechaLegible = new Date(v.fecha).toLocaleString();
@@ -341,7 +336,6 @@
                 localStorage.setItem('ventas_mango', JSON.stringify(ventas));
                 renderHistorial();
 
-                // Sincronización en segundo plano
                 enviarAGoogleSheet({
                     action: "delete",
                     id: ventaEliminada.id
@@ -368,12 +362,12 @@
             ventas[index].total = ventas[index].cantidad * PRECIO_UNITARIO;
             ventas[index].metodo = document.getElementById('editMetodo').value;
             ventas[index].action = "update";
+            ventas[index].environment = ENVIRONMENT; // Se actualiza también el entorno de manera oculta
 
             localStorage.setItem('ventas_mango', JSON.stringify(ventas));
             closeEditModal();
             renderHistorial();
 
-            // Sincronización en segundo plano
             enviarAGoogleSheet(ventas[index]);
         }
 
@@ -420,7 +414,6 @@
             }
         }
 
-        // Envío asíncrono puro (Non-blocking)
         function enviarAGoogleSheet(payload) {
             if (WEBHOOK_URL.includes("TU_WEBHOOK")) return; 
             fetch(WEBHOOK_URL, {
